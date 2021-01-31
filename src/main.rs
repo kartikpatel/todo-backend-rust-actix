@@ -3,13 +3,16 @@ use actix_web::{App, HttpServer};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let port = env::var("PORT").unwrap_or(String::from("8080"));
-    let addr = format!("127.0.0.1:{}", port); 
+    // Get the port number to listen on.
+    let port = env::var("PORT")
+        .unwrap_or_else(|_| "8080".to_string())
+        .parse()
+        .expect("PORT must be a number");
 
     HttpServer::new(|| {
         App::new()
     })
-    .bind(addr)?
+    .bind(("0.0.0.0", port))?
     .run()
     .await
 }
