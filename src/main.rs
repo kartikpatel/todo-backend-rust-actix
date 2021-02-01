@@ -1,14 +1,28 @@
 use std::env;
 use actix_cors::Cors;
 use actix_web::{
-    middleware::Logger,
-    http::Method,
     get,
+    http::Method,
+    middleware::Logger,
     App, 
     HttpResponse, 
     HttpServer, 
     Responder
 };
+use serde::Serialize;
+
+#[derive(Serialize)]
+pub struct Todo {
+    pub id: i32,
+    pub title: String,
+    pub completed: bool
+}
+
+#[get("/")]
+async fn index() -> impl Responder {
+    let todos:Vec<Todo> = Vec::new();
+    HttpResponse::Ok().json(todos)
+}
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -21,6 +35,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         let cors = Cors::default()
             .allow_any_origin()
+            .allow_any_header()
             .allowed_methods(vec![
                 Method::GET, 
                 Method::POST, 
@@ -37,9 +52,4 @@ async fn main() -> std::io::Result<()> {
     .bind(("0.0.0.0", port))?
     .run()
     .await
-}
-
-#[get("/")]
-async fn index() -> impl Responder {
-    HttpResponse::Ok().body("Hello world!")
 }
