@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, sync::Mutex};
 use actix_cors::Cors;
 use actix_web::{
     delete,
@@ -34,6 +34,17 @@ pub struct TodoCreate {
     pub order: Option<i32>,
 }
 
+impl From<TodoCreate> for Todo {
+    fn from(create: TodoCreate) -> Self {
+        Self {
+            id: 1,
+            title: create.title,
+            completed: false,
+            order: create.order,
+        }
+    }
+}
+
 #[derive(Deserialize, Debug)]
 pub struct TodoUpdate {
     pub title: Option<String>,
@@ -42,44 +53,40 @@ pub struct TodoUpdate {
 }
 
 #[get("/")]
-async fn index() -> impl Responder {
-    let todos:Vec<Todo> = Vec::new();
-    HttpResponse::Ok().json(todos)
+async fn index(data: web::Data<Mutex<Vec<Todo>>>) -> impl Responder {
+    HttpResponse::Ok().json(&mut *data.lock().unwrap())
 }
 
 #[post("/")]
-async fn create_todo(todo_create: web::Json<TodoCreate>) -> impl Responder {
+async fn create_todo(data: web::Data<Mutex<Vec<Todo>>>, todo_create: web::Json<TodoCreate>) -> impl Responder {
     println!("todo_create: {:?}", &todo_create);
-    let todos:Vec<Todo> = Vec::new();
-    HttpResponse::Ok().json(todos)
+    data.lock().unwrap().push(todo_create.into_inner().into());
+    HttpResponse::Ok().json(&mut *data.lock().unwrap())
 }
 
 #[get("/{id}")]
-async fn get_todo(params: web::Path<IdentifierParams>) -> impl Responder {
+async fn get_todo(params: web::Path<IdentifierParams>, data: web::Data<Mutex<Vec<Todo>>>) -> impl Responder {
     println!("id: {:?}", params);
-    let todos:Vec<Todo> = Vec::new();
-    HttpResponse::Ok().json(todos)
+    HttpResponse::Ok().json(&mut *data.lock().unwrap())
 }
 
 #[patch("/{id}")]
-async fn update_todo(params: web::Path<IdentifierParams>, todo_update: web::Json<TodoUpdate>) -> impl Responder {
+async fn update_todo(params: web::Path<IdentifierParams>, data: web::Data<Mutex<Vec<Todo>>>, todo_update: web::Json<TodoUpdate>) -> impl Responder {
     println!("id: {:?}", params);
     println!("todo_update: {:?}", &todo_update);
-    let todos:Vec<Todo> = Vec::new();
-    HttpResponse::Ok().json(todos)
+    HttpResponse::Ok().json(&mut *data.lock().unwrap())
 }
 
 #[delete("/{id}")]
-async fn delete_todo(params: web::Path<IdentifierParams>) -> impl Responder {
+async fn delete_todo(data: web::Data<Mutex<Vec<Todo>>>, params: web::Path<IdentifierParams>) -> impl Responder {
     println!("id: {:?}", params);
-    let todos:Vec<Todo> = Vec::new();
-    HttpResponse::Ok().json(todos)
+    HttpResponse::Ok().json(&mut *data.lock().unwrap())
 }
 
 #[delete("/")]
-async fn delete_all() -> impl Responder {
-    let todos:Vec<Todo> = Vec::new();
-    HttpResponse::Ok().json(todos)
+async fn delete_all(data: web::Data<Mutex<Vec<Todo>>>) -> impl Responder {
+    data.lock().unwrap().clear();
+    HttpResponse::Ok().json(&mut *data.lock().unwrap())
 }
 
 #[actix_web::main]
@@ -90,7 +97,10 @@ async fn main() -> std::io::Result<()> {
         .parse()
         .expect("PORT must be a number");
 
-    HttpServer::new(|| {
+    let todos:Vec<Todo> = Vec::new();
+    let data = web::Data::new(Mutex::new(todos));
+
+    HttpServer::new(move || {
         let cors = Cors::default()
             .allow_any_origin()
             .allow_any_header()
@@ -103,6 +113,7 @@ async fn main() -> std::io::Result<()> {
             ]);
 
         App::new()
+            .app_data(data.clone())
             .wrap(cors)
             .wrap(Logger::default())
             .service(index)
