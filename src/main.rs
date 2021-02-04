@@ -59,7 +59,7 @@ struct AppState {
 
 #[get("/")]
 async fn index(data: web::Data<AppState>) -> impl Responder {
-    HttpResponse::Ok().json(&mut *data.todos.lock().unwrap())
+    HttpResponse::Ok().json(&*data.todos.lock().unwrap())
 }
 
 #[post("/")]
@@ -92,19 +92,29 @@ async fn get_todo(params: web::Path<IdentifierParams>, data: web::Data<AppState>
 async fn update_todo(params: web::Path<IdentifierParams>, data: web::Data<AppState>, todo_update: web::Json<TodoUpdate>) -> impl Responder {
     println!("id: {:?}", params);
     println!("todo_update: {:?}", &todo_update);
-    HttpResponse::Ok().json(&*data.todos.lock().unwrap())
+
+    let todos = &*data.todos.lock().unwrap();
+    let todo = todos.iter().find(|x| x.id == params.id);
+
+    HttpResponse::Ok().json(todo)
 }
 
 #[delete("/{id}")]
 async fn delete_todo(params: web::Path<IdentifierParams>, data: web::Data<AppState>) -> impl Responder {
     println!("id: {:?}", params);
-    HttpResponse::Ok().json(&*data.todos.lock().unwrap())
+
+    let todos = &mut *data.todos.lock().unwrap();
+    todos.retain(|x| x.id != params.id);
+
+    HttpResponse::Ok().json(todos)
 }
 
 #[delete("/")]
 async fn delete_all(data: web::Data<AppState>) -> impl Responder {
-    data.todos.lock().unwrap().clear();
-    HttpResponse::Ok().json(&*data.todos.lock().unwrap())
+    let todos = &mut *data.todos.lock().unwrap();
+    todos.clear();
+
+    HttpResponse::Ok().json(todos)
 }
 
 #[actix_web::main]
