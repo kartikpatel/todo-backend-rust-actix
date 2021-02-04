@@ -72,34 +72,39 @@ async fn create_todo(data: web::Data<AppState>, todo_create: web::Json<TodoCreat
     let mut todo: Todo = todo_create.into_inner().into();
     todo.id = *counter;
 
-    data.todos.lock().unwrap().push(todo);
+    let todos = &mut *data.todos.lock().unwrap();
+    todos.push(todo);
     
-    HttpResponse::Ok().json(&mut *data.todos.lock().unwrap())
+    HttpResponse::Ok().json(todos)
 }
 
 #[get("/{id}")]
 async fn get_todo(params: web::Path<IdentifierParams>, data: web::Data<AppState>) -> impl Responder {
     println!("id: {:?}", params);
-    HttpResponse::Ok().json(&mut *data.todos.lock().unwrap())
+
+    let todos = &*data.todos.lock().unwrap();
+    let todo = todos.iter().find(|x| x.id == params.id);
+
+    HttpResponse::Ok().json(todo)
 }
 
 #[patch("/{id}")]
 async fn update_todo(params: web::Path<IdentifierParams>, data: web::Data<AppState>, todo_update: web::Json<TodoUpdate>) -> impl Responder {
     println!("id: {:?}", params);
     println!("todo_update: {:?}", &todo_update);
-    HttpResponse::Ok().json(&mut *data.todos.lock().unwrap())
+    HttpResponse::Ok().json(&*data.todos.lock().unwrap())
 }
 
 #[delete("/{id}")]
 async fn delete_todo(params: web::Path<IdentifierParams>, data: web::Data<AppState>) -> impl Responder {
     println!("id: {:?}", params);
-    HttpResponse::Ok().json(&mut *data.todos.lock().unwrap())
+    HttpResponse::Ok().json(&*data.todos.lock().unwrap())
 }
 
 #[delete("/")]
 async fn delete_all(data: web::Data<AppState>) -> impl Responder {
     data.todos.lock().unwrap().clear();
-    HttpResponse::Ok().json(&mut *data.todos.lock().unwrap())
+    HttpResponse::Ok().json(&*data.todos.lock().unwrap())
 }
 
 #[actix_web::main]
