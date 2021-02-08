@@ -75,7 +75,7 @@ async fn create_todo(data: web::Data<AppState>, todo_create: web::Json<TodoCreat
     let todos = &mut *data.todos.lock().unwrap();
     todos.push(todo);
     
-    HttpResponse::Ok().json(todos)
+    HttpResponse::Created().json(todos)
 }
 
 #[get("/{id}")]
@@ -93,10 +93,25 @@ async fn update_todo(params: web::Path<IdentifierParams>, data: web::Data<AppSta
     println!("id: {:?}", params);
     println!("todo_update: {:?}", &todo_update);
 
-    let todos = &*data.todos.lock().unwrap();
-    let todo = todos.iter().find(|x| x.id == params.id);
+    let todos = &mut *data.todos.lock().unwrap();
 
-    HttpResponse::Ok().json(todo)
+    if let Some(todo) = todos.iter_mut().find(|x| x.id == params.id) {
+        let changes = todo_update.into_inner();
+        
+        if let Some(title) = changes.title {
+            todo.title = title;
+        }
+    
+        if let Some(completed) = changes.completed {
+            todo.completed = completed;
+        }
+    
+        todo.order = changes.order;
+
+        return HttpResponse::Ok().json(todo);
+    } else {
+        return HttpResponse::NotFound().finish();
+    }
 }
 
 #[delete("/{id}")]
